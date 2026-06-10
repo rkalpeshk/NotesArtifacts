@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Identity &amp; Authentication — Connected Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1A2B;
+    --ink-2:#13243A;
+    --surface:#172C45;
+    --surface-2:#1E3856;
+    --line:#2C496B;
+    --text:#E9EFF6;
+    --muted:#90A6C0;
+    --faint:#5C7896;
+    /* who = authentication, what = authorization */
+    --who:#F0B45C;       /* amber: proving WHO you are */
+    --who-dim:#5a4523;
+    --what:#49D4C0;      /* teal: deciding WHAT you can do */
+    --what-dim:#1f4f49;
+    --infra:#9D8CF0;     /* violet: directory / storage / plumbing */
+    --infra-dim:#3a3360;
+    --both:#E27D9A;       /* rose: does both */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:
+      radial-gradient(900px 500px at 80% -5%, rgba(73,212,192,.10), transparent 60%),
+      radial-gradient(800px 600px at -5% 10%, rgba(240,180,92,.08), transparent 55%),
+      var(--ink);
+    color:var(--text);
+    font-family:'Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    padding:0 0 80px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+
+  /* ---------- header ---------- */
+  header{padding:64px 0 28px;border-bottom:1px solid var(--line);margin-bottom:40px}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--what);margin-bottom:18px}
+  h1{font-size:clamp(30px,5.2vw,52px);font-weight:700;letter-spacing:-.02em;line-height:1.05}
+  h1 .who{color:var(--who)}
+  h1 .what{color:var(--what)}
+  .lede{margin-top:18px;max-width:680px;color:var(--muted);font-size:17px}
+  .lede b{color:var(--text);font-weight:600}
+
+  /* ---------- legend ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:26px}
+  .key{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+  .dot{width:11px;height:11px;border-radius:3px;flex:none}
+  .dot.who{background:var(--who)}
+  .dot.what{background:var(--what)}
+  .dot.infra{background:var(--infra)}
+  .dot.both{background:var(--both)}
+
+  /* ---------- era spine ---------- */
+  .spine{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:8px 0 50px}
+  .era-step{position:relative;border:1px solid var(--line);border-radius:12px;padding:16px 16px 18px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent)}
+  .era-step .n{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--faint);letter-spacing:.2em}
+  .era-step h3{font-size:18px;margin:6px 0 4px;letter-spacing:-.01em}
+  .era-step p{font-size:13px;color:var(--muted)}
+  .era-step::after{content:"→";position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:18px;z-index:2}
+  .era-step:last-child::after{display:none}
+
+  /* ---------- sections ---------- */
+  section{margin-bottom:46px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .sec-head .tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);background:var(--what);padding:3px 9px;border-radius:5px;font-weight:700}
+  .sec-head .tag.onprem{background:var(--infra)}
+  .sec-head .tag.cloud{background:var(--what)}
+  .sec-head .tag.secure{background:var(--who)}
+  .sec-head .tag.pwless{background:var(--both)}
+  .sec-head h2{font-size:24px;font-weight:600;letter-spacing:-.01em}
+  .sec-sub{color:var(--muted);font-size:15px;margin:4px 0 20px;max-width:760px}
+
+  /* ---------- cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--ink-2);position:relative;overflow:hidden;transition:transform .15s ease,border-color .15s ease}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--infra)}
+  .card.who::before{background:var(--who)}
+  .card.what::before{background:var(--what)}
+  .card.infra::before{background:var(--infra)}
+  .card.both::before{background:var(--both)}
+  .card:hover{transform:translateY(-3px);border-color:var(--line)}
+  .card .term{font-size:17px;font-weight:600;letter-spacing:-.01em;padding-left:6px}
+  .card .meta{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 10px;padding-left:6px}
+  .pill{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+  .pill.who{color:var(--who);border-color:var(--who-dim);background:rgba(240,180,92,.07)}
+  .pill.what{color:var(--what);border-color:var(--what-dim);background:rgba(73,212,192,.07)}
+  .pill.infra{color:var(--infra);border-color:var(--infra-dim);background:rgba(157,140,240,.07)}
+  .pill.both{color:var(--both);border-color:#6a3a48;background:rgba(226,125,154,.07)}
+  .card .desc{font-size:13.5px;color:var(--muted);padding-left:6px}
+  .card .rel{margin-top:11px;padding:8px 9px 8px 9px;margin-left:6px;font-size:12px;color:var(--text);background:rgba(255,255,255,.035);border-radius:7px;border-left:2px solid var(--faint)}
+  .card .rel b{color:var(--what);font-weight:600}
+
+  /* ---------- connection callouts ---------- */
+  .links{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:18px}
+  .link{display:flex;gap:12px;align-items:flex-start;border:1px dashed var(--line);border-radius:10px;padding:13px 15px;background:rgba(255,255,255,.015)}
+  .link .ico{font-family:'JetBrains Mono',monospace;color:var(--who);font-size:15px;flex:none;margin-top:1px}
+  .link p{font-size:13.5px;color:var(--muted)}
+  .link p b{color:var(--text);font-weight:600}
+
+  /* ---------- JWT signature element ---------- */
+  .jwt-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--ink-2);margin-top:18px}
+  .jwt-head{padding:12px 18px;border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.1em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+  .jwt-head span{color:var(--faint)}
+  .jwt-body{padding:18px;font-family:'JetBrains Mono',monospace;font-size:13px;word-break:break-all;line-height:2}
+  .seg{padding:2px 4px;border-radius:4px}
+  .seg.h{color:#FF9DB6;background:rgba(255,157,182,.10)}
+  .seg.p{color:var(--who);background:rgba(240,180,92,.10)}
+  .seg.s{color:var(--what);background:rgba(73,212,192,.10)}
+  .jwt-legend{display:flex;gap:18px;flex-wrap:wrap;padding:0 18px 16px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .jwt-legend i{font-style:normal;font-weight:700;margin-right:6px}
+  .jwt-note{padding:0 18px 18px;font-size:13px;color:var(--muted)}
+  .jwt-note b{color:var(--who);font-weight:600}
+
+  /* ---------- flow ---------- */
+  .flow{counter-reset:step;display:grid;gap:10px;margin-top:18px}
+  .step{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:13px 16px;background:var(--ink-2)}
+  .step .num{counter-increment:step;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--what);font-size:14px;width:26px;height:26px;border-radius:50%;border:1px solid var(--what-dim);display:grid;place-items:center;flex:none}
+  .step .num::before{content:counter(step)}
+  .step p{font-size:14px;color:var(--muted)}
+  .step p b{color:var(--text);font-weight:600}
+  .step.star{border-color:var(--who-dim);background:rgba(240,180,92,.05)}
+  .step.star .num{color:var(--who);border-color:var(--who-dim)}
+
+  /* ---------- session vs token ---------- */
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .vs .col{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--ink-2)}
+  .vs .col h4{font-size:16px;margin-bottom:4px}
+  .vs .col .who-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);letter-spacing:.15em;text-transform:uppercase}
+  .vs .col p{font-size:13.5px;color:var(--muted);margin-top:10px}
+  .vs .col p b{color:var(--text)}
+
+  footer{border-top:1px solid var(--line);margin-top:50px;padding-top:24px;color:var(--faint);font-size:13px;font-family:'JetBrains Mono',monospace;text-align:center}
+
+  @media(max-width:720px){
+    .spine{grid-template-columns:1fr;gap:30px}
+    .era-step::after{content:"↓";right:50%;top:auto;bottom:-22px;transform:translateX(50%)}
+    .vs{grid-template-columns:1fr}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Networking · Identity &amp; Authentication</div>
+    <h1>Every concept solves one of two problems:<br><span class="who">who you are</span> &nbsp;·&nbsp; <span class="what">what you can do</span></h1>
+    <p class="lede">The whole field is <b>authentication</b> (proving identity) and <b>authorization</b> (granting access), told across three eras — and a security layer that spans all of them. Color tells you which problem each piece solves.</p>
+    <div class="legend">
+      <div class="key"><span class="dot who"></span>authN — proving WHO</div>
+      <div class="key"><span class="dot what"></span>authZ — deciding WHAT</div>
+      <div class="key"><span class="dot infra"></span>directory / plumbing</div>
+      <div class="key"><span class="dot both"></span>does both</div>
+    </div>
+  </header>
+
+  <!-- EVOLUTION SPINE -->
+  <div class="spine">
+    <div class="era-step">
+      <div class="n">ERA 01</div>
+      <h3>On-Prem</h3>
+      <p>Identities live inside the corporate network. A central directory; tickets fly around.</p>
+    </div>
+    <div class="era-step">
+      <div class="n">ERA 02</div>
+      <h3>Cloud / Web</h3>
+      <p>Identity moves to the internet. Federation, "Sign in with…", tokens as currency.</p>
+    </div>
+    <div class="era-step">
+      <div class="n">ERA 03</div>
+      <h3>Passwordless</h3>
+      <p>Kill the password itself. Public-key credentials bound to your device.</p>
+    </div>
+  </div>
+
+  <!-- ON-PREM -->
+  <section>
+    <div class="sec-head"><span class="tag onprem">Era 01</span><h2>On-Prem Foundation</h2></div>
+    <p class="sec-sub">Inside the corporate walls. A directory stores everyone; protocols authenticate against it and query it.</p>
+    <div class="grid">
+
+      <div class="card infra">
+        <div class="term">Active Directory</div>
+        <div class="meta"><span class="pill infra">Directory Service</span><span class="pill">On-Prem</span></div>
+        <div class="desc">The central database of all identities — the "god database."</div>
+        <div class="rel"><b>Owns two doors:</b> provides Kerberos (auth) &amp; LDAP (lookup) as features.</div>
+      </div>
+
+      <div class="card infra">
+        <div class="term">OpenLDAP</div>
+        <div class="meta"><span class="pill infra">Directory Service</span><span class="pill">On-Prem</span></div>
+        <div class="desc">Open-source, vendor-neutral alternative to AD.</div>
+        <div class="rel">Common in <b>Linux</b> environments.</div>
+      </div>
+
+      <div class="card infra">
+        <div class="term">LDAP</div>
+        <div class="meta"><span class="pill infra">Protocol</span><span class="pill">Lookup</span></div>
+        <div class="desc">Queries directory data — users, groups, attributes.</div>
+        <div class="rel">The <b>librarian</b>. NOT authentication — it's a lookup protocol.</div>
+      </div>
+
+      <div class="card who">
+        <div class="term">Kerberos</div>
+        <div class="meta"><span class="pill who">Protocol · authN</span><span class="pill">On-Prem</span></div>
+        <div class="desc">Log in once, get a ticket, reuse it — password never re-sent.</div>
+        <div class="rel">The <b>bouncer</b>. Mechanism = tickets.</div>
+      </div>
+
+      <div class="card who">
+        <div class="term">RADIUS</div>
+        <div class="meta"><span class="pill who">Protocol · authN</span><span class="pill">Network</span></div>
+        <div class="desc">Network access auth for Wi-Fi / VPN.</div>
+        <div class="rel">The <b>messenger</b> — pairs with NPS to admit devices.</div>
+      </div>
+
+      <div class="card what">
+        <div class="term">NPS</div>
+        <div class="meta"><span class="pill what">Service · authZ</span><span class="pill">Network</span></div>
+        <div class="desc">Network Policy Server — decides who's allowed to connect.</div>
+        <div class="rel">The <b>brain</b> behind RADIUS's authorization decision.</div>
+      </div>
+
+    </div>
+
+    <div class="links">
+      <div class="link"><span class="ico">⮑</span><p><b>AD = Kerberos + LDAP.</b> Not hops in front of it — both are services AD provides over the same identity database.</p></div>
+      <div class="link"><span class="ico">⮑</span><p><b>RADIUS authenticates, NPS authorizes.</b> "Are you valid?" then "Are you allowed on?" — a two-part pair.</p></div>
+    </div>
+  </section>
+
+  <!-- CLOUD -->
+  <section>
+    <div class="sec-head"><span class="tag cloud">Era 02</span><h2>Cloud / Web</h2></div>
+    <p class="sec-sub">Identity on the internet. The authZ/authN split becomes razor-sharp: OAuth grants access, OIDC proves identity, SAML does enterprise SSO.</p>
+    <div class="grid">
+
+      <div class="card what">
+        <div class="term">OAuth 2.0</div>
+        <div class="meta"><span class="pill what">Framework · authZ</span><span class="pill">Cloud / Web</span></div>
+        <div class="desc">Delegates <b>access</b> to resources without sharing your password.</div>
+        <div class="rel">NOT authentication. Answers "what can this app do?"</div>
+      </div>
+
+      <div class="card who">
+        <div class="term">OpenID Connect</div>
+        <div class="meta"><span class="pill who">Protocol · authN</span><span class="pill">on OAuth 2.0</span></div>
+        <div class="desc">Adds an <b>ID token</b> on top of OAuth to prove who you are.</div>
+        <div class="rel">Modern SSO. Answers "who is this user?"</div>
+      </div>
+
+      <div class="card who">
+        <div class="term">SAML</div>
+        <div class="meta"><span class="pill who">Protocol · authN</span><span class="pill">Enterprise</span></div>
+        <div class="desc">XML-based enterprise SSO via signed assertions.</div>
+        <div class="rel">Older but alive — Salesforce, Workday, ServiceNow.</div>
+      </div>
+
+      <div class="card both">
+        <div class="term">Microsoft Entra ID</div>
+        <div class="meta"><span class="pill both">Identity Platform</span><span class="pill">Cloud / Hybrid</span></div>
+        <div class="desc">Speaks OAuth, OIDC <em>and</em> SAML — one front door for every app.</div>
+        <div class="rel">A <b>polyglot translator</b> — talks each app in its own protocol.</div>
+      </div>
+
+      <div class="card both">
+        <div class="term">AWS Cognito</div>
+        <div class="meta"><span class="pill both">Identity Service</span><span class="pill">Cloud</span></div>
+        <div class="desc">App auth + user pools, built on OAuth/OIDC flows.</div>
+        <div class="rel">AWS's equivalent of an identity platform.</div>
+      </div>
+
+      <div class="card both">
+        <div class="term">GCP Identity</div>
+        <div class="meta"><span class="pill both">Identity Service</span><span class="pill">Cloud</span></div>
+        <div class="desc">Manages users &amp; access to Google services via OAuth/OIDC.</div>
+        <div class="rel">Same concept as Entra, Google's house.</div>
+      </div>
+
+    </div>
+
+    <div class="links">
+      <div class="link"><span class="ico">⮑</span><p><b>OIDC is built ON OAuth.</b> OAuth gives access; OIDC bolts on the ID token so the app learns identity too.</p></div>
+      <div class="link"><span class="ico">⮑</span><p><b>SAML &amp; OIDC both = SSO,</b> different generations. Platforms (Entra/Cognito/GCP) speak these protocols under the hood.</p></div>
+    </div>
+  </section>
+
+  <!-- TOKENS -->
+  <section>
+    <div class="sec-head"><span class="tag cloud">The Currency</span><h2>Tokens &amp; JWTs</h2></div>
+    <p class="sec-sub">The cloud-era version of the Kerberos ticket. After login you carry a token instead of re-sending your password. Three kinds — and the split maps onto authN vs authZ.</p>
+    <div class="grid">
+      <div class="card who">
+        <div class="term">ID Token</div>
+        <div class="meta"><span class="pill who">authN · OIDC</span></div>
+        <div class="desc">Says <b>who you are</b>. For the app. Usually a JWT.</div>
+      </div>
+      <div class="card what">
+        <div class="term">Access Token</div>
+        <div class="meta"><span class="pill what">authZ · OAuth</span></div>
+        <div class="desc">Says <b>what you can access</b>. For the API / resource server.</div>
+      </div>
+      <div class="card">
+        <div class="term">Refresh Token</div>
+        <div class="meta"><span class="pill">long-lived</span></div>
+        <div class="desc">Quietly fetches a new access token — no re-login needed.</div>
+      </div>
+    </div>
+
+    <div class="jwt-wrap">
+      <div class="jwt-head"><span>// a JWT is three Base64 parts, dot-separated</span><span>header . payload . signature</span></div>
+      <div class="jwt-body"><span class="seg h">eyJhbGciOiJSUzI1NiJ9</span>.<span class="seg p">eyJzdWIiOiJqYXkiLCJlbWFpbCI6ImpAeC5pbyIsImV4cCI6MTcyfQ</span>.<span class="seg s">f4Tz9k_Qm2…sig</span></div>
+      <div class="jwt-legend">
+        <span><i style="color:#FF9DB6">HEADER</i>algorithm + type</span>
+        <span><i style="color:var(--who)">PAYLOAD</i>claims: sub, email, exp, roles</span>
+        <span><i style="color:var(--what)">SIGNATURE</i>cryptographic seal</span>
+      </div>
+      <div class="jwt-note"><b>Key insight:</b> a JWT is signed, <b>not encrypted</b>. Anyone can read the payload — they just can't forge it without the issuer's key. So never put secrets inside one.</div>
+    </div>
+
+    <div class="vs">
+      <div class="col">
+        <div class="who-tag">Stateful</div>
+        <h4>Session</h4>
+        <p>You hold a meaningless <b>session ID</b>; the real data lives on the server. The server must <b>look you up every request</b>. Like a coat-check ticket.</p>
+      </div>
+      <div class="col">
+        <div class="who-tag">Stateless</div>
+        <h4>Token / JWT</h4>
+        <p>The signed data <b>travels inside the token</b>. The server just verifies the seal — no lookup, no stored state. Like a sealed VIP badge. Scales across many servers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLOW -->
+  <section>
+    <div class="sec-head"><span class="tag cloud">The Dance</span><h2>OAuth / OIDC Login Flow</h2></div>
+    <p class="sec-sub">"Sign in with Google" to a photo app. Players: <b>you</b> (resource owner) · the <b>app</b> (client) · <b>Google login</b> (authorization server) · <b>Google Photos API</b> (resource server).</p>
+    <div class="flow">
+      <div class="step"><span class="num"></span><p>You click <b>"Sign in with Google"</b> on the app.</p></div>
+      <div class="step"><span class="num"></span><p>App <b>redirects you to Google</b> with its client_id, requested scopes, and a PKCE code_challenge.</p></div>
+      <div class="step star"><span class="num"></span><p>You <b>authenticate directly with Google</b>. ⭐ The app never sees your password — only Google does.</p></div>
+      <div class="step"><span class="num"></span><p>Google asks you to <b>consent</b>: "This app wants to view your photos. Allow?"</p></div>
+      <div class="step"><span class="num"></span><p>Google redirects you back to the app with a one-time <b>authorization code</b> (useless on its own).</p></div>
+      <div class="step"><span class="num"></span><p>App's <b>backend</b> swaps the code (over a secure back-channel, with PKCE) for the real <b>tokens</b>.</p></div>
+      <div class="step star"><span class="num"></span><p>App now holds an <b>ID token</b> (who you are — OIDC) + an <b>access token</b> (call the API — OAuth).</p></div>
+    </div>
+  </section>
+
+  <!-- SECURITY LAYER -->
+  <section>
+    <div class="sec-head"><span class="tag secure">Spans All Eras</span><h2>The Security Layer — MFA</h2></div>
+    <p class="sec-sub">Extra proof on top of any login. MFA is the strategy; the rest are mechanisms that plug into it. True MFA combines <b>different</b> factor types: something you know · have · are.</p>
+    <div class="grid">
+      <div class="card who">
+        <div class="term">MFA</div>
+        <div class="meta"><span class="pill who">Security Control</span><span class="pill">Everywhere</span></div>
+        <div class="desc">The strategy: require more than one type of proof.</div>
+        <div class="rel">Umbrella over everything below.</div>
+      </div>
+      <div class="card who">
+        <div class="term">TOTP</div>
+        <div class="meta"><span class="pill who">Mechanism</span><span class="pill">under MFA</span></div>
+        <div class="desc">Time-based One-Time Password — 6-digit code, refreshes every 30s.</div>
+        <div class="rel">Google / MS Authenticator. Factor: <b>have</b>.</div>
+      </div>
+      <div class="card who">
+        <div class="term">Push Auth</div>
+        <div class="meta"><span class="pill who">Mechanism</span><span class="pill">under MFA</span></div>
+        <div class="desc">Approve a login prompt on your phone — one tap.</div>
+        <div class="rel">User-friendly. Factor: <b>have</b>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PASSWORDLESS -->
+  <section>
+    <div class="sec-head"><span class="tag pwless">Era 03</span><h2>Passwordless</h2></div>
+    <p class="sec-sub">Don't add a factor — remove the password. Public-key crypto: your device keeps the private key, the site keeps only a useless public key.</p>
+    <div class="grid">
+      <div class="card who">
+        <div class="term">WebAuthn / FIDO2</div>
+        <div class="meta"><span class="pill who">Standard · authN</span><span class="pill">Passwordless</span></div>
+        <div class="desc">Site sends a challenge; your device signs it with a private key that never leaves the device.</div>
+        <div class="rel">Phishing-resistant — credential bound to the real domain.</div>
+      </div>
+      <div class="card who">
+        <div class="term">Passkey</div>
+        <div class="meta"><span class="pill who">Credential</span><span class="pill">Syncable</span></div>
+        <div class="desc">A FIDO2 credential that syncs across your devices (iCloud / Google).</div>
+        <div class="rel">One tap = already MFA: device (<b>have</b>) + biometric (<b>are</b>).</div>
+      </div>
+      <div class="card">
+        <div class="term">Authenticators</div>
+        <div class="meta"><span class="pill">where keys live</span></div>
+        <div class="desc"><b>Platform:</b> Face ID, Windows Hello. <b>Roaming:</b> YubiKey.</div>
+        <div class="rel">Private key sits in secure hardware.</div>
+      </div>
+    </div>
+    <div class="links">
+      <div class="link"><span class="ico">⮑</span><p><b>Three wins:</b> phishing-resistant, nothing secret stored on the server, and no reusable secret crosses the wire.</p></div>
+    </div>
+  </section>
+
+  <footer>WHO &middot; WHAT &middot; ON-PREM &rarr; CLOUD &rarr; PASSWORDLESS — one connected system</footer>
+
+</div>
+</body>
+</html>
